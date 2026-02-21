@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Rsync Helper</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --accent-bg: #f1f5f9;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 750px;
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 { margin: 0 0 10px 0; font-weight: 600; font-size: 1.5rem; text-align: center; }
+        p.subtitle { text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 30px; }
+
+        /* Mode Switcher Styles */
+        .mode-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: var(--accent-bg);
+            padding: 6px;
+            border-radius: 14px;
+        }
+
+        .mode-selector label { margin-bottom: 0; cursor: pointer; }
+        .mode-selector input { display: none; }
+        .mode-card {
+            display: block;
+            padding: 10px;
+            text-align: center;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            color: var(--text-muted);
+        }
+        input:checked + .mode-card {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+        }
+
+        .section {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+        }
+
+        .section-header {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .form-group { margin-bottom: 15px; }
+
+        label.field-label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        .checkbox-wrapper input { width: 17px; height: 17px; accent-color: var(--primary); }
+        .checkbox-text { font-size: 0.85rem; font-weight: 500; }
+
+        .btn-generate {
+            width: 100%;
+            padding: 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-generate:hover { background: var(--primary-hover); transform: translateY(-1px); }
+
+        .result-area {
+            margin-top: 25px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 15px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            background: var(--accent-bg);
+            resize: none;
+            box-sizing: border-box;
+            color: var(--text-main);
+        }
+
+        .hidden { display: none; }
+        .remote-badge {
+            background: #e0e7ff;
+            color: var(--primary);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.65rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Rsync Helper</h1>
+    <p class="subtitle">Generate clean rsync commands for local and remote transfers</p>
+
+    <div class="mode-selector">
+        <label>
+            <input type="radio" name="direction" value="l2r" checked onchange="updateUI()">
+            <span class="mode-card">Local ➔ Remote</span>
+        </label>
+        <label>
+            <input type="radio" name="direction" value="r2l" onchange="updateUI()">
+            <span class="mode-card">Remote ➔ Local</span>
+        </label>
+    </div>
+
+    <!-- SOURCE SECTION -->
+    <div class="section">
+        <div class="section-header">
+            Source <span id="srcBadge" class="remote-badge hidden">Remote</span>
+        </div>
+        
+        <!-- Remote Source Fields (Hidden by default) -->
+        <div id="srcRemoteFields" class="input-row hidden" style="margin-bottom: 15px;">
+            <div class="form-group">
+                <label class="field-label">Source Host</label>
+                <input type="text" id="srcHost" placeholder="1.2.3.4">
+            </div>
+            <div class="form-group">
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+                    <div>
+                        <label class="field-label">Port</label>
+                        <input type="number" id="srcPort" value="22">
+                    </div>
+                    <div>
+                        <label class="field-label">User</label>
+                        <input type="text" id="srcUser" placeholder="root">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="field-label">Source Path</label>
+            <input type="text" id="srcPath" placeholder="/var/www/my-app">
+            
+            <label class="checkbox-wrapper">
+                <input type="checkbox" id="isWhole" onchange="toggleFileFields()">
+                <span class="checkbox-text">Whole files inside (Add trailing slash)</span>
+            </label>
+        </div>
+
+        <div id="fileGroup" class="form-group">
+            <label class="field-label">Which file?</label>
+            <input type="text" id="srcFile" placeholder="database.sql">
+        </div>
+    </div>
+
+    <!-- DESTINATION SECTION -->
+    <div class="section">
+        <div class="section-header">
+            Destination <span id="destBadge" class="remote-badge">Remote</span>
+        </div>
+
+        <!-- Remote Dest Fields -->
+        <div id="destRemoteFields" class="input-row" style="margin-bottom: 15px;">
+            <div class="form-group">
+                <label class="field-label">Dest Host</label>
+                <input type="text" id="destHost" placeholder="1.2.3.4">
+            </div>
+            <div class="form-group">
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+                    <div>
+                        <label class="field-label">Port</label>
+                        <input type="number" id="destPort" value="22">
+                    </div>
+                    <div>
+                        <label class="field-label">User</label>
+                        <input type="text" id="destUser" placeholder="root">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="field-label">Destination Path</label>
+            <input type="text" id="destPath" placeholder="/home/backup">
+            
+            <div id="renameWrapper">
+                <label class="checkbox-wrapper">
+                    <input type="checkbox" id="doRename" onchange="toggleRenameField()">
+                    <span class="checkbox-text">Rename destination file</span>
+                </label>
+            </div>
+        </div>
+
+        <div id="renameGroup" class="form-group hidden">
+            <label class="field-label">New Filename</label>
+            <input type="text" id="newName" placeholder="backup_new.sql">
+        </div>
+    </div>
+
+    <button class="btn-generate" onclick="generate()">Generate Command</button>
+
+    <div class="result-area">
+        <label class="field-label">Final Rsync Command</label>
+        <textarea id="output" readonly placeholder="Result will appear here..."></textarea>
+    </div>
+</div>
+
+<script>
+    function updateUI() {
+        const direction = document.querySelector('input[name="direction"]:checked').value;
+        const srcBadge = document.getElementById('srcBadge');
+        const destBadge = document.getElementById('destBadge');
+        const srcRemoteFields = document.getElementById('srcRemoteFields');
+        const destRemoteFields = document.getElementById('destRemoteFields');
+
+        if (direction === 'l2r') {
+            // Local to Remote
+            srcBadge.classList.add('hidden');
+            destBadge.classList.remove('hidden');
+            srcRemoteFields.classList.add('hidden');
+            destRemoteFields.classList.remove('hidden');
+        } else {
+            // Remote to Local
+            srcBadge.classList.remove('hidden');
+            destBadge.classList.add('hidden');
+            srcRemoteFields.classList.remove('hidden');
+            destRemoteFields.classList.add('hidden');
+        }
+    }
+
+    function toggleFileFields() {
+        const isWhole = document.getElementById('isWhole').checked;
+        const fileGroup = document.getElementById('fileGroup');
+        const renameWrapper = document.getElementById('renameWrapper');
+        const renameGroup = document.getElementById('renameGroup');
+
+        if (isWhole) {
+            fileGroup.classList.add('hidden');
+            renameWrapper.classList.add('hidden');
+            renameGroup.classList.add('hidden');
+            document.getElementById('doRename').checked = false;
+        } else {
+            fileGroup.classList.remove('hidden');
+            renameWrapper.classList.remove('hidden');
+        }
+    }
+
+    function toggleRenameField() {
+        const doRename = document.getElementById('doRename').checked;
+        const renameGroup = document.getElementById('renameGroup');
+        if (doRename) {
+            renameGroup.classList.remove('hidden');
+            // Auto-fill new name from source if empty
+            if (!document.getElementById('newName').value) {
+                document.getElementById('newName').value = document.getElementById('srcFile').value;
+            }
+        } else {
+            renameGroup.classList.add('hidden');
+        }
+    }
+
+    function fixPath(path) {
+        if (!path) return "";
+        path = path.trim();
+        return path.endsWith('/') ? path : path + '/';
+    }
+
+    function generate() {
+        const direction = document.querySelector('input[name="direction"]:checked').value;
+        const isWhole = document.getElementById('isWhole').checked;
+        const srcFile = document.getElementById('srcFile').value.trim();
+        const doRename = document.getElementById('doRename').checked;
+        const newName = document.getElementById('newName').value.trim();
+
+        let srcFinal = "";
+        let destFinal = "";
+        let portFlag = "";
+
+        if (direction === 'l2r') {
+            // --- SOURCE: LOCAL ---
+            let sPath = fixPath(document.getElementById('srcPath').value);
+            srcFinal = isWhole ? sPath : sPath + srcFile;
+
+            // --- DEST: REMOTE ---
+            const dHost = document.getElementById('destHost').value.trim();
+            const dUser = document.getElementById('destUser').value.trim();
+            const dPort = document.getElementById('destPort').value.trim();
+            const dPath = fixPath(document.getElementById('destPath').value);
+            
+            if (dPort !== "22" && dPort !== "") portFlag = `-e 'ssh -p ${dPort}' `;
+            
+            const remoteStr = `${dUser ? dUser + '@' : ''}${dHost}:${dPath}`;
+            destFinal = (!isWhole && doRename && newName) ? remoteStr + newName : remoteStr;
+
+        } else {
+            // --- SOURCE: REMOTE ---
+            const sHost = document.getElementById('srcHost').value.trim();
+            const sUser = document.getElementById('srcUser').value.trim();
+            const sPort = document.getElementById('srcPort').value.trim();
+            const sPath = fixPath(document.getElementById('srcPath').value);
+            
+            if (sPort !== "22" && sPort !== "") portFlag = `-e 'ssh -p ${sPort}' `;
+            
+            const remoteStr = `${sUser ? sUser + '@' : ''}${sHost}:${sPath}`;
+            srcFinal = isWhole ? remoteStr : remoteStr + srcFile;
+
+            // --- DEST: LOCAL ---
+            const dPath = fixPath(document.getElementById('destPath').value);
+            destFinal = (!isWhole && doRename && newName) ? dPath + newName : dPath;
+        }
+
+        if (!srcFinal || srcFinal.includes('undefined')) {
+            alert("Please fill in the paths and host details.");
+            return;
+        }
+
+        const command = `rsync -avzP ${portFlag}"${srcFinal}" "${destFinal}"`;
+        document.getElementById('output').value = command;
+    }
+
+    // Initialize
+    updateUI();
+</script>
+
+</body>
+</html>

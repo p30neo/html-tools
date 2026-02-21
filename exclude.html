@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exclude Tool</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 800px;
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            margin-top: 0;
+            font-weight: 600;
+            font-size: 1.5rem;
+            color: var(--text-main);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 15px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            box-sizing: border-box;
+            transition: all 0.2s;
+            outline: none;
+            background: #fdfdfd;
+            margin-bottom: 20px;
+        }
+
+        textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+
+        /* Button */
+        .btn-process {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-bottom: 25px;
+        }
+
+        .btn-process:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-process:active {
+            transform: scale(0.99);
+        }
+
+        .output-area {
+            background: #f1f5f9;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Exclude Tool</h1>
+
+    <label for="original">Original Text</label>
+    <textarea id="original" placeholder="Paste your original text here (one item per line)..."></textarea>
+
+    <label for="exclude">Remove What?</label>
+    <textarea id="exclude" placeholder="Paste lines to exclude here (one item per line)..."></textarea>
+
+    <button class="btn-process" onclick="handleExclude()">Process</button>
+
+    <label for="output">Result</label>
+    <textarea id="output" class="output-area" placeholder="Output will appear here..."></textarea>
+</div>
+
+<script>
+    // Normalize a line for comparison (handles Gmail dot normalization)
+    function normalizeForComparison(line) {
+        const lowerLine = line.toLowerCase().trim();
+        
+        // Check if it's an email address
+        const emailRegex = /^([^@]+)@(.+)$/;
+        const match = lowerLine.match(emailRegex);
+        
+        if (match) {
+            const localPart = match[1];
+            const domain = match[2];
+            
+            // Check if it's a Gmail address (gmail.com or googlemail.com)
+            if (domain === 'gmail.com' || domain === 'googlemail.com') {
+                // Remove dots from local part for Gmail
+                const normalizedLocal = localPart.replace(/\./g, '');
+                return normalizedLocal + '@' + domain;
+            }
+        }
+        
+        // For non-Gmail emails or non-email lines, just return lowercase
+        return lowerLine;
+    }
+
+    function handleExclude() {
+        const originalText = document.getElementById('original').value;
+        const excludeText = document.getElementById('exclude').value;
+        const outputField = document.getElementById('output');
+        
+        // Get lines from original text, trim and filter empty
+        const originalLines = originalText.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
+        
+        // Get lines to exclude, trim and filter empty
+        const excludeLines = excludeText.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
+        
+        // Create a Set for fast lookup of exclude lines (with Gmail normalization)
+        const excludeSet = new Set(excludeLines.map(line => normalizeForComparison(line)));
+        
+        // Make original lines unique and remove excluded ones
+        const seen = new Set();
+        const result = [];
+        
+        originalLines.forEach(line => {
+            const normalized = normalizeForComparison(line);
+            // Only add if not seen before and not in exclude list
+            if (!seen.has(normalized) && !excludeSet.has(normalized)) {
+                seen.add(normalized);
+                result.push(line); // Keep original case
+            }
+        });
+        
+        outputField.value = result.length > 0 ? result.join('\n') : "No results.";
+    }
+</script>
+
+</body>
+</html>

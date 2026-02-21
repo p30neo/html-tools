@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WireGuard Tools - QR Code Generator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 20vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 800px;
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            margin-top: 0;
+            font-weight: 600;
+            font-size: 1.5rem;
+            color: var(--text-main);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 15px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            box-sizing: border-box;
+            transition: all 0.2s;
+            outline: none;
+            background: #fdfdfd;
+            margin-bottom: 5px;
+        }
+
+        textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+
+        /* Button */
+        .btn-process {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-bottom: 25px;
+        }
+
+        .btn-process:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-process:active {
+            transform: scale(0.99);
+        }
+
+        .btn-process:disabled {
+            background-color: var(--text-muted);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        #qrcode {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+            margin-top: 20px;
+            padding: 20px;
+            background: #f1f5f9;
+            border-radius: 12px;
+        }
+
+        #qrcode canvas {
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .error-message {
+            color: #ef4444;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .empty-state {
+            color: var(--text-muted);
+            text-align: center;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>QR Code Generator</h1>
+    <textarea id="input-text" placeholder="Paste your WireGuard config or any text here..."></textarea>
+
+    <button class="btn-process" onclick="generateQRCode()">Generate QR Code</button>
+
+    <div id="qrcode" class="empty-state">
+        QR code will appear here
+    </div>
+    <div id="error-message" class="error-message"></div>
+</div>
+
+<script>
+    function generateQRCode() {
+        const inputText = document.getElementById('input-text').value.trim();
+        const qrcodeDiv = document.getElementById('qrcode');
+        const errorDiv = document.getElementById('error-message');
+        const button = document.querySelector('.btn-process');
+
+        // Clear previous error
+        errorDiv.textContent = '';
+        qrcodeDiv.innerHTML = '';
+        qrcodeDiv.className = 'empty-state';
+
+        // Validate input
+        if (!inputText) {
+            errorDiv.textContent = 'Please enter some text to generate a QR code.';
+            qrcodeDiv.textContent = 'QR code will appear here';
+            return;
+        }
+
+        // Disable button during generation
+        button.disabled = true;
+        button.textContent = 'Generating...';
+
+        try {
+            // Clear the div
+            qrcodeDiv.innerHTML = '';
+            qrcodeDiv.className = '';
+
+            // Create a temporary div for QR code generation
+            const tempDiv = document.createElement('div');
+            qrcodeDiv.appendChild(tempDiv);
+
+            // Generate QR code using qrcodejs
+            new QRCode(tempDiv, {
+                text: inputText,
+                width: 300,
+                height: 300,
+                colorDark: '#000000',
+                colorLight: '#FFFFFF',
+                correctLevel: QRCode.CorrectLevel.M
+            });
+
+            // Get the generated canvas
+            const qrCanvas = tempDiv.querySelector('canvas');
+            if (!qrCanvas) {
+                throw new Error('Failed to generate QR code canvas');
+            }
+
+            // Create a new canvas with margins
+            const marginSize = 40; // Margin in pixels
+            const finalCanvas = document.createElement('canvas');
+            finalCanvas.width = qrCanvas.width + (marginSize * 2);
+            finalCanvas.height = qrCanvas.height + (marginSize * 2);
+            
+            const ctx = finalCanvas.getContext('2d');
+            
+            // Fill with white background (for margins)
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+            
+            // Draw the QR code in the center
+            ctx.drawImage(qrCanvas, marginSize, marginSize);
+            
+            // Replace the temp div with the final canvas
+            qrcodeDiv.innerHTML = '';
+            qrcodeDiv.appendChild(finalCanvas);
+            
+            // Add styling
+            finalCanvas.style.display = 'block';
+            finalCanvas.style.margin = '0 auto';
+            finalCanvas.style.borderRadius = '8px';
+            finalCanvas.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+
+            // Success
+            button.disabled = false;
+            button.textContent = 'Generate QR Code';
+        } catch (error) {
+            button.disabled = false;
+            button.textContent = 'Generate QR Code';
+            console.error(error);
+            errorDiv.textContent = 'Error generating QR code. Please try again.';
+            qrcodeDiv.className = 'empty-state';
+            qrcodeDiv.textContent = 'QR code will appear here';
+        }
+    }
+
+    // Allow Enter key to generate (Ctrl+Enter or Cmd+Enter)
+    document.getElementById('input-text').addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            generateQRCode();
+        }
+    });
+</script>
+
+</body>
+</html>
